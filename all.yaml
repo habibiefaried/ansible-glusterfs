@@ -59,13 +59,18 @@
 - hosts: peerer
   become: true
   tasks:
+    - name: with_flattened
+      debug:
+        msg: "PARAMETER: {{ item }}"
+      with_flattened: "{{ groups['serv'] }}"
+
     - name: Peering with {{ item }}
       shell: gluster peer probe {{ item }}
       with_items:
         - "{{ groups['serv'] }}"
 
     - name: "Check peer status"
-      shell: "gluster peer status"
+      shell: "gluster pool list"
       register: glsout
 
     - debug: var=glsout.stdout_lines
@@ -79,4 +84,6 @@
           - glusterfs-client
         state: present
         update_cache: yes
+
+### Testing purpose
         
