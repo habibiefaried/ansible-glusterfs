@@ -1,0 +1,65 @@
+---
+
+- name: Inventory validation
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - assert:
+        that:
+          - "groups['serv'] | length >= 2"
+          - "groups['client'] | length >= 1"
+
+- hosts: all
+  gather_facts: False
+  tasks:
+    - name: install python 2
+      raw: test -e /usr/bin/python || (sudo apt -y update && sudo apt install -y python-minimal python-apt)
+
+- hosts: all
+  become: true
+  tasks:
+    - name: "Install pre-req"
+      apt:
+        name:
+          - python
+          - software-properties-common
+          - build-essential
+          - wget
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: "Add glusterfs 5 repo"
+      apt_repository:
+      repo: ppa:gluster/glusterfs-5
+      state: present
+
+- hosts: serv
+  become: true
+  tasks:
+    - name: "Install gluster 5 server"
+      apt:
+        name:
+          - glusterfs-server
+        state: present
+        update_cache: yes
+
+    - name: enable a timer for dnf-automatic
+      systemd:
+        name: glusterd
+        state: started
+        enabled: yes
+
+    - name: "Upload etc hosts"
+      template: src=etc-hosts.j2 dest=/etc/hosts mode=0755
+
+- hosts: client
+  become: true
+  tasks:
+    - name: "Install gluster 5 client"
+      apt:
+        name:
+          - glusterfs-client
+        state: present
+        update_cache: yes
+        
