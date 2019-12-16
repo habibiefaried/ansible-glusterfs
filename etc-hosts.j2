@@ -1,8 +1,8 @@
-127.0.0.1	localhost
-::1			localhost
+127.0.0.1   localhost
+::1         localhost
 {% for server in groups.serv %}
-{{ server }}	{{ hostvars[server].ansible_host }}
+{{ hostvars[server].ansible_host }} {{ server }}
 {% endfor %}
 {% for server in groups.peerer %}
-{{ server }}	{{ hostvars[server].ansible_host }}
+{{ hostvars[server].ansible_host }} {{ server }}
 {% endfor %}

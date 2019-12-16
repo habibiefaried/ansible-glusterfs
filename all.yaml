@@ -9,8 +9,8 @@
           - "groups['serv'] | length >= 1"
           - "groups['client'] | length >= 1"
           - "groups['peerer'] | length == 1"
-          - assert: { that: "'{{ item }}' not in groups['serv']" }
-            with_items: "{{ groups['peerer'] }}"
+    - assert: { that: "'{{ item }}' not in groups['serv']" }
+      with_items: "{{ groups['peerer'] }}"
 
 - hosts: all
   gather_facts: False
@@ -55,7 +55,7 @@
         name: glusterd
         state: started
         enabled: yes
-        
+
 - hosts: peerer
   become: true
   tasks:
