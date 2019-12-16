@@ -6,8 +6,11 @@
   tasks:
     - assert:
         that:
-          - "groups['serv'] | length >= 2"
+          - "groups['serv'] | length >= 1"
           - "groups['client'] | length >= 1"
+          - "groups['peerer'] | length == 1"
+          - assert: { that: "'{{ item }}' not in groups['serv']" }
+            with_items: "{{ groups['peerer'] }}"
 
 - hosts: all
   gather_facts: False
@@ -31,10 +34,10 @@
 
     - name: "Add glusterfs 5 repo"
       apt_repository:
-      repo: ppa:gluster/glusterfs-5
-      state: present
+        repo: ppa:gluster/glusterfs-5
+        state: present
 
-- hosts: serv
+- hosts: serv,peerer
   become: true
   tasks:
     - name: "Install gluster 5 server"
@@ -43,15 +46,29 @@
           - glusterfs-server
         state: present
         update_cache: yes
+    
+    - name: "Upload etc hosts"
+      template: src=etc-hosts.j2 dest=/etc/hosts mode=0755
 
-    - name: enable a timer for dnf-automatic
+    - name: enable glusterd service
       systemd:
         name: glusterd
         state: started
         enabled: yes
+        
+- hosts: peerer
+  become: true
+  tasks:
+    - name: Peering with {{ item }}
+      shell: gluster peer probe {{ item }}
+      with_items:
+        - "{{ groups['serv'] }}"
 
-    - name: "Upload etc hosts"
-      template: src=etc-hosts.j2 dest=/etc/hosts mode=0755
+    - name: "Check peer status"
+      shell: "gluster peer status"
+      register: glsout
+
+    - debug: var=glsout.stdout_lines
 
 - hosts: client
   become: true
