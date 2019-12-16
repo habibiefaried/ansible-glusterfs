@@ -32,10 +32,18 @@
         state: present
         update_cache: yes
 
-    - name: "Add glusterfs 5 repo"
+    - name: "Add glusterfs repo"
       apt_repository:
-        repo: ppa:gluster/glusterfs-5
+        repo: ppa:gluster/glusterfs-7
         state: present
+
+    - name: "inserting hosts"
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item].ansible_host }} {{ item }}"
+      with_items:
+        - "{{ groups['peerer'] }}"
+        - "{{ groups['serv'] }}"
 
 - hosts: serv,peerer
   become: true
@@ -46,9 +54,6 @@
           - glusterfs-server
         state: present
         update_cache: yes
-    
-    - name: "Upload etc hosts"
-      template: src=etc-hosts.j2 dest=/etc/hosts mode=0755
 
     - name: enable glusterd service
       systemd:
@@ -59,12 +64,7 @@
 - hosts: peerer
   become: true
   tasks:
-    - name: with_flattened
-      debug:
-        msg: "PARAMETER: {{ item }}"
-      with_flattened: "{{ groups['serv'] }}"
-
-    - name: Peering with {{ item }}
+    - name: Peering with another hosts
       shell: gluster peer probe {{ item }}
       with_items:
         - "{{ groups['serv'] }}"
@@ -86,4 +86,25 @@
         update_cache: yes
 
 ### Testing purpose
-        
+- hosts: serv
+  become: true
+  tasks:
+    - name: Creating test directory for brick
+      file:
+        path: /glusterfs/distributed
+        state: directory
+
+- hosts: peerer
+  become: true
+  tasks:
+    - name: Create volume
+      shell: "gluster volume create voltest {{ ':/glusterfs/distributed '.join(groups['serv']) + ':/glusterfs/distributed' }}"
+      register: glsout
+
+    - debug: var=glsout.stdout_lines
+
+    - name: start volume
+      shell: "gluster volume start voltest && gluster volume info voltest"
+      register: glsout
+
+    - debug: var=glsout.stdout_lines
